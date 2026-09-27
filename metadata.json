@@ -1,0 +1,6 @@
+{
+  "name": "JY Connect",
+  "description": "Comprehensive Junior Youth management, planning, learning, and cluster coordination platform for Bahá’í Junior Youth groups and animators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
