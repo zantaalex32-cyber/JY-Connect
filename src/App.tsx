@@ -12,13 +12,21 @@ import {
   AppSettings,
   UserRole,
   ReportData,
-  AttendanceStatus
+  AttendanceStatus,
+  FollowUpTask,
+  GroupTimelineEntry,
+  SupportResource,
+  SafeguardingIncident,
+  SyncStatus,
+  LanguageCode
 } from './types';
 import {
   loadStoredData,
   saveStoredData,
   getSamplePracticeData,
   getInitialEmptyData,
+  logAuditEvent,
+  exportDataAsJsonFile,
   AppStateData
 } from './utils/storage';
 import { Navbar } from './components/layout/Navbar';
@@ -34,6 +42,13 @@ import { CalendarView } from './components/calendar/CalendarView';
 import { MaterialsLibrary } from './components/materials/MaterialsLibrary';
 import { ClusterReports } from './components/reports/ClusterReports';
 import { SettingsView } from './components/settings/SettingsView';
+import { MyWeekView } from './components/animators/MyWeekView';
+import { AnimatorSupportCenter } from './components/animators/AnimatorSupportCenter';
+import { FollowUpManager } from './components/tasks/FollowUpManager';
+import { ClusterNeighborhoodView } from './components/neighborhoods/ClusterNeighborhoodView';
+import { JYAssistantModal } from './components/ai/JYAssistantModal';
+import { SafeguardingModal } from './components/safeguarding/SafeguardingModal';
+import { AnnouncementComposerModal } from './components/communication/AnnouncementComposerModal';
 import { GlobalSearchModal } from './components/common/GlobalSearchModal';
 import { NotificationsModal } from './components/common/NotificationsModal';
 import { JyMascotLogo, BahaiNinePointedStar } from './components/common/BahaiArt';
@@ -44,11 +59,29 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState<boolean>(false);
+  const [isAssistantOpen, setIsAssistantOpen] = useState<boolean>(false);
+  const [isAnnouncementsOpen, setIsAnnouncementsOpen] = useState<boolean>(false);
+  const [isSafeguardingOpen, setIsSafeguardingOpen] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() =>
+    typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'synced'
+  );
 
   // Sync state to local storage on changes
   useEffect(() => {
     saveStoredData(data);
   }, [data]);
+
+  // Online / offline event listeners
+  useEffect(() => {
+    const handleOnline = () => setSyncStatus('online');
+    const handleOffline = () => setSyncStatus('offline');
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Handlers for Group CRUD
   const handleSaveGroup = (group: JuniorYouthGroup) => {
@@ -277,6 +310,98 @@ export default function App() {
 
   const unreadCount = data.notifications.filter((n) => !n.read).length;
 
+  // Sync simulation handler
+  const handleTriggerSync = () => {
+    setSyncStatus('synchronizing');
+    setTimeout(() => {
+      setSyncStatus('synced');
+      saveStoredData(data);
+      setTimeout(() => {
+        setSyncStatus('online');
+      }, 2000);
+    }, 700);
+  };
+
+  // Language handler
+  const handleSetLanguage = (lang: LanguageCode) => {
+    setData((prev) => ({
+      ...prev,
+      settings: { ...prev.settings, language: lang }
+    }));
+  };
+
+  // Task handlers
+  const handleSaveTask = (task: FollowUpTask) => {
+    setData((prev) => {
+      const exists = prev.tasks.some((t) => t.id === task.id);
+      const updated = exists ? prev.tasks.map((t) => (t.id === task.id ? task : t)) : [task, ...prev.tasks];
+      return {
+        ...prev,
+        tasks: updated,
+        auditLogs: logAuditEvent(prev.auditLogs, 'create_record', prev.currentRole, `Task updated/created: ${task.title}`, 'task', task.id)
+      };
+    });
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    setData((prev) => ({
+      ...prev,
+      tasks: prev.tasks.filter((t) => t.id !== taskId),
+      auditLogs: logAuditEvent(prev.auditLogs, 'delete_record', prev.currentRole, `Deleted task ${taskId}`, 'task', taskId)
+    }));
+  };
+
+  // Support Resource handlers
+  const handleSaveSupportResource = (res: SupportResource) => {
+    setData((prev) => {
+      const exists = prev.supportResources.some((r) => r.id === res.id);
+      const updated = exists ? prev.supportResources.map((r) => (r.id === res.id ? res : r)) : [res, ...prev.supportResources];
+      return {
+        ...prev,
+        supportResources: updated,
+        auditLogs: logAuditEvent(prev.auditLogs, 'create_record', prev.currentRole, `Resource added: ${res.title}`, 'resource', res.id)
+      };
+    });
+  };
+
+  const handleDeleteSupportResource = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      supportResources: prev.supportResources.filter((r) => r.id !== id),
+      auditLogs: logAuditEvent(prev.auditLogs, 'delete_record', prev.currentRole, `Resource removed ${id}`, 'resource', id)
+    }));
+  };
+
+  // Safeguarding Incidents handlers
+  const handleSaveIncident = (incident: SafeguardingIncident) => {
+    setData((prev) => {
+      const exists = prev.safeguardingIncidents.some((i) => i.id === incident.id);
+      const updated = exists ? prev.safeguardingIncidents.map((i) => (i.id === incident.id ? incident : i)) : [incident, ...prev.safeguardingIncidents];
+      return {
+        ...prev,
+        safeguardingIncidents: updated,
+        auditLogs: logAuditEvent(prev.auditLogs, 'create_record', prev.currentRole, `Safeguarding incident recorded: ${incident.title}`, 'incident', incident.id)
+      };
+    });
+  };
+
+  const handleDeleteIncident = (id: string) => {
+    setData((prev) => ({
+      ...prev,
+      safeguardingIncidents: prev.safeguardingIncidents.filter((i) => i.id !== id),
+      auditLogs: logAuditEvent(prev.auditLogs, 'delete_record', prev.currentRole, `Safeguarding incident record removed ${id}`, 'incident', id)
+    }));
+  };
+
+  // Timeline entry handler
+  const handleAddTimelineEntry = (entry: GroupTimelineEntry) => {
+    setData((prev) => ({
+      ...prev,
+      timelineEntries: [entry, ...prev.timelineEntries],
+      auditLogs: logAuditEvent(prev.auditLogs, 'create_record', prev.currentRole, `Timeline entry added to group ${entry.groupId}: ${entry.title}`, 'timeline', entry.id)
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans selection:bg-sky-100">
       {/* Navbar with 3-zone contract, no gradients */}
@@ -292,6 +417,13 @@ export default function App() {
         onToggleDemoData={handleToggleDemo}
         onResetEmptyData={handleResetEmptyData}
         whatsappContact={data.settings.whatsappContact}
+        syncStatus={syncStatus}
+        onTriggerSync={handleTriggerSync}
+        language={data.settings.language || 'en'}
+        onSetLanguage={handleSetLanguage}
+        onOpenAssistant={() => setIsAssistantOpen(true)}
+        onOpenAnnouncements={() => setIsAnnouncementsOpen(true)}
+        onOpenSafeguarding={() => setIsSafeguardingOpen(true)}
       />
 
       {/* Main Viewport Content */}
@@ -313,6 +445,23 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'my_week' && (
+          <MyWeekView
+            meetings={data.meetings}
+            groups={data.groups}
+            participants={data.participants}
+            studyCycles={data.studyCycles}
+            serviceProjects={data.serviceProjects}
+            events={data.events}
+            tasks={data.tasks}
+            currentRole={data.currentRole}
+            onUpdateAttendance={handleUpdateAttendance}
+            onOpenReflection={() => setActiveTab('meetings')}
+            onNavigateTab={setActiveTab}
+            whatsappContact={data.settings.whatsappContact}
+          />
+        )}
+
         {activeTab === 'groups' && (
           <GroupList
             groups={data.groups}
@@ -320,11 +469,15 @@ export default function App() {
             animators={data.animators}
             meetings={data.meetings}
             serviceProjects={data.serviceProjects}
+            events={data.events}
+            studyCycles={data.studyCycles}
+            timelineEntries={data.timelineEntries}
             currentRole={data.currentRole}
             onSaveGroup={handleSaveGroup}
             onDeleteGroup={handleDeleteGroup}
-            onNavigateToParticipants={(groupId) => setActiveTab('participants')}
-            onNavigateToMeetings={(groupId) => setActiveTab('meetings')}
+            onNavigateToParticipants={() => setActiveTab('participants')}
+            onNavigateToMeetings={() => setActiveTab('meetings')}
+            onAddTimelineEntry={handleAddTimelineEntry}
           />
         )}
 
@@ -405,6 +558,40 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'tasks' && (
+          <FollowUpManager
+            tasks={data.tasks}
+            groups={data.groups}
+            participants={data.participants}
+            animators={data.animators}
+            currentRole={data.currentRole}
+            onSaveTask={handleSaveTask}
+            onDeleteTask={handleDeleteTask}
+          />
+        )}
+
+        {activeTab === 'support_center' && (
+          <AnimatorSupportCenter
+            resources={data.supportResources}
+            currentRole={data.currentRole}
+            onSaveResource={handleSaveSupportResource}
+            onDeleteResource={handleDeleteSupportResource}
+          />
+        )}
+
+        {activeTab === 'cluster' && (
+          <ClusterNeighborhoodView
+            groups={data.groups}
+            participants={data.participants}
+            animators={data.animators}
+            serviceProjects={data.serviceProjects}
+            events={data.events}
+            clusterName={data.settings.clusterName}
+            currentRole={data.currentRole}
+            onNavigateTab={setActiveTab}
+          />
+        )}
+
         {activeTab === 'materials' && (
           <MaterialsLibrary
             materials={data.materials}
@@ -438,6 +625,16 @@ export default function App() {
             isDemoDataActive={data.isDemoDataActive}
             onLoadPracticeData={handleLoadPracticeData}
             onResetEmptyData={handleResetEmptyData}
+            onExportBackup={() => exportDataAsJsonFile(data)}
+            onImportBackup={(imported) => {
+              if (imported && typeof imported === 'object') {
+                setData((prev) => ({
+                  ...prev,
+                  ...imported,
+                  auditLogs: logAuditEvent(prev.auditLogs, 'update_record', prev.currentRole, 'Restored database from JSON archive snapshot')
+                }));
+              }
+            }}
           />
         )}
       </main>
@@ -464,6 +661,38 @@ export default function App() {
         notifications={data.notifications}
         onMarkAllAsRead={handleMarkAllNotificationsRead}
         onMarkOneRead={handleMarkOneNotificationRead}
+      />
+
+      {/* JY Assistant Modal */}
+      <JYAssistantModal
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        materials={data.materials}
+        groups={data.groups}
+        reports={data.reports}
+        clusterName={data.settings.clusterName}
+      />
+
+      {/* Safeguarding & Audit Logs Modal */}
+      <SafeguardingModal
+        isOpen={isSafeguardingOpen}
+        onClose={() => setIsSafeguardingOpen(false)}
+        incidents={data.safeguardingIncidents}
+        auditLogs={data.auditLogs}
+        participants={data.participants}
+        currentRole={data.currentRole}
+        onSaveIncident={handleSaveIncident}
+        onDeleteIncident={handleDeleteIncident}
+      />
+
+      {/* Announcements & Communication Composer Modal */}
+      <AnnouncementComposerModal
+        isOpen={isAnnouncementsOpen}
+        onClose={() => setIsAnnouncementsOpen(false)}
+        groups={data.groups}
+        events={data.events}
+        serviceProjects={data.serviceProjects}
+        clusterName={data.settings.clusterName}
       />
 
       {/* Footer (No gradients, clean typography, quiet copyright & WhatsApp help) */}

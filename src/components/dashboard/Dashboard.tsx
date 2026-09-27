@@ -11,7 +11,9 @@ import {
   ArrowRight,
   HeartHandshake,
   TrendingUp,
-  MapPin
+  MapPin,
+  CheckSquare,
+  AlertTriangle
 } from 'lucide-react';
 import {
   JuniorYouthGroup,
@@ -21,7 +23,9 @@ import {
   ServiceProject,
   CampOrEvent,
   StudyCycle,
-  UserRole
+  UserRole,
+  FollowUpTask,
+  ReportData
 } from '../../types';
 import { BahaiNinePointedStar, BahaiDivider } from '../common/BahaiArt';
 
@@ -33,6 +37,8 @@ interface DashboardProps {
   serviceProjects: ServiceProject[];
   events: CampOrEvent[];
   studyCycles: StudyCycle[];
+  tasks?: FollowUpTask[];
+  reports?: ReportData[];
   currentRole: UserRole;
   onNavigate: (tab: string) => void;
   onOpenNewGroup: () => void;
@@ -48,6 +54,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   serviceProjects,
   events,
   studyCycles,
+  tasks = [],
+  reports = [],
   currentRole,
   onNavigate,
   onOpenNewGroup,
@@ -62,10 +70,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const totalAnimators = animators.length;
   const activeAnimators = animators.filter((a) => a.groupIds.length > 0).length;
 
-  // Groups requiring support: e.g. status is forming, or has 0 animators, or status is paused
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Groups requiring support: status is forming, has 0 animators, or status is paused
   const groupsNeedingSupport = groups.filter(
     (g) => g.status === 'forming' || g.animatorIds.length === 0 || g.status === 'paused'
   );
+
+  // Overdue and pending follow-ups
+  const overdueTasks = tasks.filter(
+    (t) => t.status !== 'completed' && t.status !== 'cancelled' && t.dueDate < todayStr
+  );
+  const pendingTasks = tasks.filter((t) => t.status !== 'completed' && t.status !== 'cancelled');
 
   // Active Service Projects
   const activeProjects = serviceProjects.filter((p) => p.progressStatus !== 'completed');
@@ -118,8 +134,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {currentRole !== 'viewer' && (
             <>
               <button
+                onClick={() => onNavigate('tasks')}
+                className="px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1.5"
+              >
+                <CheckSquare className="w-3.5 h-3.5 text-sky-600" />
+                <span>Follow-ups ({pendingTasks.length})</span>
+              </button>
+              <button
                 onClick={onOpenNewMeeting}
-                className="px-3.5 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1.5"
+                className="px-3 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-md hover:bg-slate-50 transition-colors flex items-center gap-1.5"
               >
                 <Calendar className="w-3.5 h-3.5 text-sky-600" />
                 <span>Log Meeting</span>
@@ -271,40 +294,101 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Groups Requiring Support Alert Section */}
-      {groupsNeedingSupport.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">
-                Action Required: Groups Needing Support ({groupsNeedingSupport.length})
+      {/* Two-Column: Overdue Follow-ups & Groups Needing Support */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Outstanding Follow-ups Alert */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="w-4 h-4 text-sky-600" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                Outstanding Follow-ups ({pendingTasks.length})
               </h3>
-              <p className="text-xs text-amber-800 mt-1">
-                The following groups are either forming, paused, or currently lack assigned animators:
-              </p>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {groupsNeedingSupport.map((grp) => (
-                  <div
-                    key={grp.id}
-                    onClick={() => onNavigate('groups')}
-                    className="bg-white border border-amber-300 rounded p-2.5 text-xs cursor-pointer hover:bg-amber-50/50"
-                  >
-                    <div className="font-semibold text-slate-900">{grp.name}</div>
-                    <div className="text-slate-600 text-[11px] mt-0.5 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-amber-700" />
-                      <span>{grp.neighborhood || grp.location || 'Location pending'}</span>
-                    </div>
-                    <div className="mt-1 text-amber-900 font-medium text-[11px]">
-                      {grp.animatorIds.length === 0 ? '• Needs animator assignment' : `• Status: ${grp.status}`}
+            </div>
+            {overdueTasks.length > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-rose-600 text-white rounded">
+                {overdueTasks.length} Overdue
+              </span>
+            )}
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {pendingTasks.length === 0 ? (
+              <div className="text-xs text-slate-500 py-3 text-center">
+                All follow-up actions and home visits are up to date.
+              </div>
+            ) : (
+              pendingTasks.slice(0, 3).map((t) => (
+                <div
+                  key={t.id}
+                  onClick={() => onNavigate('tasks')}
+                  className="p-2.5 bg-slate-50 hover:bg-sky-50/50 rounded border border-slate-200 cursor-pointer flex items-center justify-between text-xs transition-colors"
+                >
+                  <div>
+                    <div className="font-bold text-slate-900">{t.title}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      Responsible: <strong>{t.assignedTo}</strong> · Due: <span className="font-mono">{t.dueDate}</span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded capitalize ${
+                      t.priority === 'high'
+                        ? 'bg-rose-100 text-rose-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {t.priority}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
-      )}
+
+        {/* Groups Requiring Support Alert Section */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                Groups Requiring Support ({groupsNeedingSupport.length})
+              </h3>
+            </div>
+            <button
+              onClick={() => onNavigate('groups')}
+              className="text-[11px] font-bold text-sky-700 hover:underline"
+            >
+              View All
+            </button>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {groupsNeedingSupport.length === 0 ? (
+              <div className="text-xs text-slate-500 py-3 text-center">
+                All active groups have assigned animators and regular meetings.
+              </div>
+            ) : (
+              groupsNeedingSupport.slice(0, 3).map((grp) => (
+                <div
+                  key={grp.id}
+                  onClick={() => onNavigate('groups')}
+                  className="p-2.5 bg-amber-50/50 hover:bg-amber-50 rounded border border-amber-200 cursor-pointer flex items-center justify-between text-xs transition-colors"
+                >
+                  <div>
+                    <div className="font-bold text-slate-900">{grp.name}</div>
+                    <div className="text-[11px] text-slate-600 mt-0.5">
+                      {grp.neighborhood || 'Neighborhood unassigned'}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-200 text-amber-900 rounded">
+                    {grp.animatorIds.length === 0 ? 'Needs Animator' : grp.status}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Main Two-Column Grid: Meetings & Study Programs */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

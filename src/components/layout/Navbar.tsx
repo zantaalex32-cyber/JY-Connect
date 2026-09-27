@@ -8,10 +8,19 @@ import {
   Shield,
   Layers,
   Database,
-  RotateCcw
+  RotateCcw,
+  Sparkles,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Share2,
+  ShieldCheck,
+  CheckSquare,
+  Globe
 } from 'lucide-react';
-import { UserRole } from '../../types';
+import { UserRole, SyncStatus, LanguageCode } from '../../types';
 import { JyMascotLogo, BahaiNinePointedStar } from '../common/BahaiArt';
+import { getTranslation } from '../../utils/i18n';
 
 interface NavbarProps {
   activeTab: string;
@@ -25,6 +34,13 @@ interface NavbarProps {
   onToggleDemoData: () => void;
   onResetEmptyData: () => void;
   whatsappContact: string;
+  syncStatus: SyncStatus;
+  onTriggerSync: () => void;
+  language: LanguageCode;
+  onSetLanguage: (lang: LanguageCode) => void;
+  onOpenAssistant: () => void;
+  onOpenAnnouncements: () => void;
+  onOpenSafeguarding: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -38,63 +54,160 @@ export const Navbar: React.FC<NavbarProps> = ({
   isDemoDataActive,
   onToggleDemoData,
   onResetEmptyData,
-  whatsappContact
+  whatsappContact,
+  syncStatus,
+  onTriggerSync,
+  language,
+  onSetLanguage,
+  onOpenAssistant,
+  onOpenAnnouncements,
+  onOpenSafeguarding
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+
+  const t = (k: any) => getTranslation(language, k);
 
   const navLinks = [
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'groups', label: 'Groups' },
-    { id: 'participants', label: 'Junior Youth' },
-    { id: 'animators', label: 'Animators' },
-    { id: 'meetings', label: 'Meetings' },
-    { id: 'study', label: 'Study Program' },
-    { id: 'service', label: 'Service' },
-    { id: 'events', label: 'Camps & Events' },
-    { id: 'calendar', label: 'Calendar' },
-    { id: 'materials', label: 'Materials Library' },
-    { id: 'reports', label: 'Reports' },
-    { id: 'settings', label: 'Settings' }
+    { id: 'dashboard', label: t('dashboard') },
+    { id: 'my_week', label: t('myWeek') },
+    { id: 'groups', label: t('groups') },
+    { id: 'participants', label: t('participants') },
+    { id: 'animators', label: t('animators') },
+    { id: 'meetings', label: t('meetings') },
+    { id: 'study', label: t('study') },
+    { id: 'service', label: t('service') },
+    { id: 'events', label: t('events') },
+    { id: 'calendar', label: t('calendar') },
+    { id: 'tasks', label: t('tasks') },
+    { id: 'support_center', label: t('supportCenter') },
+    { id: 'cluster', label: t('cluster') },
+    { id: 'materials', label: t('materials') },
+    { id: 'reports', label: t('reports') },
+    { id: 'settings', label: t('settings') }
   ];
 
   const roleLabels: Record<UserRole, string> = {
-    admin: 'Administrator',
-    coordinator: 'Cluster Coordinator',
-    animator: 'Animator',
-    viewer: 'Viewer (Read-only)'
+    admin: t('admin'),
+    coordinator: t('coordinator'),
+    animator: t('animator'),
+    viewer: t('viewer')
   };
 
   const handleWhatsAppClick = () => {
-    // Clean formatted number for WhatsApp link
     const cleanNum = whatsappContact.replace(/\D/g, '');
     window.open(`https://wa.me/${cleanNum}?text=Hello%20JY%20Connect%20Coordinator`, '_blank', 'noopener,noreferrer');
   };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-      {/* Upper Announcement / Demo Indicator Bar if Demo is Active */}
-      {isDemoDataActive && (
-        <div className="bg-sky-50 border-b border-sky-100 px-4 py-1.5 text-xs text-sky-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-sky-600 inline-block" />
-            <span className="font-semibold">Practice Demo Mode Active:</span>
-            <span>Displaying sample Bahá’í Junior Youth groups and meetings.</span>
-          </div>
+      {/* Upper Status & Demo Bar */}
+      <div className="bg-slate-900 text-slate-300 px-4 py-1 text-[11px] flex flex-wrap items-center justify-between gap-2 border-b border-slate-800">
+        <div className="flex items-center gap-3">
+          {/* Offline / Online Sync Indicator */}
           <button
-            onClick={onResetEmptyData}
-            className="flex items-center gap-1 font-medium text-sky-700 hover:text-sky-900 underline ml-2"
+            onClick={onTriggerSync}
+            title="Click to synchronize offline changes"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors"
           >
-            <RotateCcw className="w-3 h-3" />
-            Reset to Clean Empty State
+            {syncStatus === 'online' && (
+              <>
+                <Wifi className="w-3 h-3 text-emerald-400" />
+                <span className="font-semibold text-emerald-400">{t('online')}</span>
+              </>
+            )}
+            {syncStatus === 'offline' && (
+              <>
+                <WifiOff className="w-3 h-3 text-amber-400" />
+                <span className="font-semibold text-amber-400">{t('offline')}</span>
+              </>
+            )}
+            {syncStatus === 'synchronizing' && (
+              <>
+                <RefreshCw className="w-3 h-3 text-sky-400 animate-spin" />
+                <span className="font-semibold text-sky-400">{t('synchronizing')}</span>
+              </>
+            )}
+            {syncStatus === 'synced' && (
+              <>
+                <Wifi className="w-3 h-3 text-emerald-400" />
+                <span className="font-semibold text-emerald-400">{t('synced')}</span>
+              </>
+            )}
           </button>
-        </div>
-      )}
 
-      {/* Main Top Bar Contract: Zone 1 (Brand) - Zone 2 (Nav Links) - Zone 3 (Primary Actions) */}
+          {isDemoDataActive && (
+            <span className="text-sky-300 font-medium hidden sm:inline">
+              Practice Data Mode Active
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Quick Action: Safeguarding */}
+          <button
+            onClick={onOpenSafeguarding}
+            className="flex items-center gap-1 hover:text-white transition-colors"
+          >
+            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+            <span>Safeguarding & Consent</span>
+          </button>
+
+          {/* Quick Action: Announcements */}
+          <button
+            onClick={onOpenAnnouncements}
+            className="flex items-center gap-1 hover:text-white transition-colors"
+          >
+            <Share2 className="w-3 h-3 text-sky-400" />
+            <span>Share Announcement</span>
+          </button>
+
+          {/* Language Selector */}
+          <div className="relative">
+            <button
+              onClick={() => setLangDropdownOpen(!langDropdownOpen)}
+              className="flex items-center gap-1 hover:text-white transition-colors font-bold"
+            >
+              <Globe className="w-3 h-3 text-slate-400" />
+              <span>{language.toUpperCase()}</span>
+            </button>
+            {langDropdownOpen && (
+              <div className="absolute right-0 mt-1 w-32 bg-white text-slate-900 border border-slate-200 shadow-lg rounded py-1 z-50 text-xs">
+                <button
+                  onClick={() => {
+                    onSetLanguage('en');
+                    setLangDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center justify-between ${
+                    language === 'en' ? 'font-bold text-sky-700 bg-sky-50' : ''
+                  }`}
+                >
+                  <span>English</span>
+                  {language === 'en' && <span>✓</span>}
+                </button>
+                <button
+                  onClick={() => {
+                    onSetLanguage('sw');
+                    setLangDropdownOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 hover:bg-slate-100 flex items-center justify-between ${
+                    language === 'sw' ? 'font-bold text-sky-700 bg-sky-50' : ''
+                  }`}
+                >
+                  <span>Kiswahili</span>
+                  {language === 'sw' && <span>✓</span>}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Top Bar */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Zone 1: Single text element Brand Zone with Mascot & Star Emblem */}
+          {/* Brand */}
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveTab('dashboard')}
@@ -113,15 +226,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           </div>
 
-          {/* Zone 2: Navigation Links (Desktop 4-6 prominent, with More dropdown for rest) */}
-          <nav className="hidden lg:flex items-center gap-1 text-sm font-medium text-slate-700">
-            {navLinks.slice(0, 7).map((item) => (
+          {/* Nav Links */}
+          <nav className="hidden xl:flex items-center gap-1 text-xs font-semibold text-slate-700">
+            {navLinks.slice(0, 8).map((item) => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`px-3 py-1.5 rounded-md transition-colors whitespace-nowrap ${
+                className={`px-2.5 py-1.5 rounded-md transition-colors whitespace-nowrap ${
                   activeTab === item.id
-                    ? 'bg-sky-600 text-white font-semibold shadow-xs'
+                    ? 'bg-sky-600 text-white font-bold shadow-xs'
                     : 'text-slate-700 hover:text-sky-700 hover:bg-sky-50'
                 }`}
               >
@@ -129,20 +242,20 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             ))}
 
-            {/* More Menu Dropdown for remaining links */}
+            {/* More Menu Dropdown */}
             <div className="relative group">
-              <button className="px-3 py-1.5 rounded-md text-slate-700 hover:text-sky-700 hover:bg-sky-50 flex items-center gap-1">
+              <button className="px-2.5 py-1.5 rounded-md text-slate-700 hover:text-sky-700 hover:bg-sky-50 flex items-center gap-1">
                 <span>More</span>
                 <span className="text-xs">▾</span>
               </button>
-              <div className="absolute right-0 mt-1 w-48 bg-white border border-slate-200 shadow-md rounded-md py-1 hidden group-hover:block hover:block z-50">
-                {navLinks.slice(7).map((item) => (
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-slate-200 shadow-md rounded-md py-1 hidden group-hover:block hover:block z-50">
+                {navLinks.slice(8).map((item) => (
                   <button
                     key={item.id}
                     onClick={() => setActiveTab(item.id)}
                     className={`w-full text-left px-4 py-2 text-xs transition-colors ${
                       activeTab === item.id
-                        ? 'bg-sky-100 text-sky-900 font-semibold'
+                        ? 'bg-sky-100 text-sky-900 font-bold'
                         : 'text-slate-700 hover:bg-sky-50 hover:text-sky-800'
                     }`}
                   >
@@ -153,19 +266,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </nav>
 
-          {/* Zone 3: Primary Actions (Search, Notifications, Role Switcher, WhatsApp Support) */}
+          {/* Right Action Tools */}
           <div className="flex items-center gap-2">
-            {/* Global Search Button */}
+            {/* JY Assistant Button */}
+            <button
+              onClick={onOpenAssistant}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-md transition-colors shadow-xs"
+              title="Open AI Assistant for lesson ideas, games, and reports"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+              <span className="hidden sm:inline">JY Assistant</span>
+            </button>
+
+            {/* Global Search */}
             <button
               onClick={openGlobalSearch}
-              title="Search groups, youth, animators, materials"
+              title="Search groups, youth, animators, materials, tasks"
               className="p-2 text-slate-600 hover:text-sky-700 hover:bg-sky-50 rounded-md transition-colors"
               aria-label="Global Search"
             >
               <Search className="w-4 h-4" />
             </button>
 
-            {/* Notifications Button */}
+            {/* Notifications */}
             <button
               onClick={openNotifications}
               title="Notifications"
@@ -178,7 +301,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </button>
 
-            {/* WhatsApp Contact Button */}
+            {/* WhatsApp Contact */}
             <button
               onClick={handleWhatsAppClick}
               title={`Coordinator WhatsApp Support: ${whatsappContact}`}
@@ -246,10 +369,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
-            {/* Mobile menu toggle button */}
+            {/* Mobile menu toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 text-slate-600 hover:text-slate-900 rounded-md"
+              className="xl:hidden p-2 text-slate-600 hover:text-slate-900 rounded-md"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -258,9 +381,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Mobile Menu Drawer */}
+      {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-4 space-y-1 shadow-lg">
+        <div className="xl:hidden border-t border-slate-200 bg-white px-4 pt-2 pb-4 space-y-1 shadow-lg">
           <div className="grid grid-cols-2 gap-1 py-2">
             {navLinks.map((item) => (
               <button
@@ -271,7 +394,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 className={`text-left px-3 py-2 rounded-md text-xs font-medium transition-colors ${
                   activeTab === item.id
-                    ? 'bg-sky-100 text-sky-900 font-semibold'
+                    ? 'bg-sky-100 text-sky-900 font-bold'
                     : 'text-slate-700 hover:bg-slate-100'
                 }`}
               >
@@ -283,6 +406,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
             <button
               onClick={() => {
+                onOpenAssistant();
+                setMobileMenuOpen(false);
+              }}
+              className="text-left text-xs font-bold text-white bg-slate-900 px-3 py-2 rounded-md flex items-center gap-2"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+              <span>Ask JY Assistant</span>
+            </button>
+            <button
+              onClick={() => {
                 onToggleDemoData();
                 setMobileMenuOpen(false);
               }}
@@ -290,13 +423,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Database className="w-3.5 h-3.5" />
               <span>{isDemoDataActive ? 'Clear & Start Empty' : 'Load Demo Practice Data'}</span>
-            </button>
-            <button
-              onClick={handleWhatsAppClick}
-              className="text-left text-xs font-medium text-slate-800 bg-slate-100 px-3 py-2 rounded-md flex items-center gap-2"
-            >
-              <MessageCircle className="w-3.5 h-3.5 text-sky-600" />
-              <span>Coordinator WhatsApp: {whatsappContact}</span>
             </button>
           </div>
         </div>

@@ -7,7 +7,9 @@ import {
   MapPin,
   Users,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Download,
+  ExternalLink
 } from 'lucide-react';
 import {
   Meeting,
@@ -16,6 +18,7 @@ import {
   JuniorYouthGroup
 } from '../../types';
 import { BahaiNinePointedStar } from '../common/BahaiArt';
+import { generateIcsCalendar, downloadIcsFile, getGoogleCalendarLink } from '../../utils/calendarExport';
 
 interface CalendarViewProps {
   meetings: Meeting[];
@@ -156,8 +159,20 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </p>
         </div>
 
-        {/* View Mode Switcher */}
+        {/* View Mode Switcher & Export */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => {
+              const ics = generateIcsCalendar(meetings, events, serviceProjects, 'Bahá’í Cluster JY');
+              downloadIcsFile(ics, 'jy-connect-schedule.ics');
+            }}
+            className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+            title="Download .ics for Apple Calendar, Outlook, and Google Calendar"
+          >
+            <Download className="w-3.5 h-3.5 text-sky-700" />
+            <span>Export (.ics)</span>
+          </button>
+
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-md text-xs font-medium text-slate-600">
             {(['month', 'week', 'day'] as CalendarViewMode[]).map((mode) => (
               <button
@@ -385,7 +400,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               )}
             </div>
 
-            <div className="flex items-center justify-end pt-2 border-t border-slate-200">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+              <a
+                href={getGoogleCalendarLink(
+                  selectedItem.title,
+                  selectedItem.date,
+                  selectedItem.time || '10:00 AM',
+                  selectedItem.location || 'Cluster Meeting Venue',
+                  `JY Connect Activity: ${selectedItem.title}`
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 text-xs font-semibold text-sky-800 bg-sky-50 border border-sky-200 rounded hover:bg-sky-100 flex items-center gap-1.5 transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Google Calendar</span>
+              </a>
+
               <button
                 onClick={() => setSelectedItem(null)}
                 className="px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 rounded hover:bg-slate-800"

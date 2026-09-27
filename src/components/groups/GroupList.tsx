@@ -13,7 +13,8 @@ import {
   Sparkles,
   ExternalLink,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  History
 } from 'lucide-react';
 import {
   JuniorYouthGroup,
@@ -21,9 +22,13 @@ import {
   Animator,
   Meeting,
   ServiceProject,
+  CampOrEvent,
+  StudyCycle,
+  GroupTimelineEntry,
   UserRole
 } from '../../types';
 import { BahaiNinePointedStar } from '../common/BahaiArt';
+import { GroupTimeline } from './GroupTimeline';
 
 interface GroupListProps {
   groups: JuniorYouthGroup[];
@@ -31,11 +36,15 @@ interface GroupListProps {
   animators: Animator[];
   meetings: Meeting[];
   serviceProjects: ServiceProject[];
+  events?: CampOrEvent[];
+  studyCycles?: StudyCycle[];
+  timelineEntries?: GroupTimelineEntry[];
   currentRole: UserRole;
   onSaveGroup: (group: JuniorYouthGroup) => void;
   onDeleteGroup: (groupId: string) => void;
   onNavigateToParticipants: (groupId: string) => void;
   onNavigateToMeetings: (groupId: string) => void;
+  onAddTimelineEntry?: (entry: GroupTimelineEntry) => void;
 }
 
 export const GroupList: React.FC<GroupListProps> = ({
@@ -44,15 +53,20 @@ export const GroupList: React.FC<GroupListProps> = ({
   animators,
   meetings,
   serviceProjects,
+  events = [],
+  studyCycles = [],
+  timelineEntries = [],
   currentRole,
   onSaveGroup,
   onDeleteGroup,
   onNavigateToParticipants,
-  onNavigateToMeetings
+  onNavigateToMeetings,
+  onAddTimelineEntry
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'forming' | 'paused' | 'concluded'>('all');
   const [selectedGroup, setSelectedGroup] = useState<JuniorYouthGroup | null>(null);
+  const [timelineGroup, setTimelineGroup] = useState<JuniorYouthGroup | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
 
@@ -342,6 +356,13 @@ export const GroupList: React.FC<GroupListProps> = ({
                   </button>
 
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setTimelineGroup(group)}
+                      title="Group Timeline & History"
+                      className="p-1.5 text-slate-600 hover:text-sky-800 hover:bg-sky-50 rounded"
+                    >
+                      <History className="w-3.5 h-3.5" />
+                    </button>
                     {canEdit && (
                       <button
                         onClick={() => handleOpenEditModal(group)}
@@ -453,6 +474,16 @@ export const GroupList: React.FC<GroupListProps> = ({
               >
                 <Calendar className="w-3.5 h-3.5" />
                 <span>View Meetings & Attendance</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setTimelineGroup(selectedGroup);
+                }}
+                className="px-3 py-1.5 text-xs font-semibold text-sky-800 bg-sky-50 border border-sky-200 rounded hover:bg-sky-100 transition-colors flex items-center gap-1.5"
+              >
+                <History className="w-3.5 h-3.5" />
+                <span>Group History & Timeline</span>
               </button>
 
               {canEdit && (
@@ -690,6 +721,50 @@ export const GroupList: React.FC<GroupListProps> = ({
                 className="px-3.5 py-1.5 text-xs font-semibold text-white bg-red-600 rounded hover:bg-red-700"
               >
                 Delete Group
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Group Timeline Modal */}
+      {timelineGroup && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg border border-slate-200 max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4 text-sky-700" />
+                <h2 className="text-base font-bold text-slate-900">
+                  {timelineGroup.name} — Group History & Timeline
+                </h2>
+              </div>
+              <button
+                onClick={() => setTimelineGroup(null)}
+                className="text-slate-400 hover:text-slate-700 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <GroupTimeline
+              group={timelineGroup}
+              timelineEntries={timelineEntries}
+              meetings={meetings}
+              serviceProjects={serviceProjects}
+              events={events}
+              studyCycles={studyCycles}
+              currentRole={currentRole}
+              onAddTimelineEntry={(entry) => {
+                if (onAddTimelineEntry) onAddTimelineEntry(entry);
+              }}
+            />
+
+            <div className="flex justify-end pt-3 border-t border-slate-200">
+              <button
+                onClick={() => setTimelineGroup(null)}
+                className="px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 rounded hover:bg-slate-800"
+              >
+                Close Timeline
               </button>
             </div>
           </div>
